@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>실내 이상기후 모니터</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <h1>실내 이상기후 모니터</h1>
+    <span id="feed-status" class="feed">불러오는 중…</span>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="now" aria-selected="true">현재</button>
+    <button role="tab" data-tab="history">과거 이력</button>
+    <button role="tab" data-tab="trend">추이 분석</button>
+    <button role="tab" data-tab="events">이상 이벤트 <span id="event-badge" class="count"></span></button>
+  </nav>
+  <div class="tools">
+    <label class="switch"><input type="checkbox" id="auto-refresh" checked> 자동 갱신</label>
+    <button id="theme-toggle" class="ghost" title="테마 전환">◐</button>
+  </div>
+</header>
+
+<main>
+  <!-- 현재 -->
+  <section id="tab-now" class="tab active">
+    <div id="alerts" class="alerts"></div>
+
+    <div class="grid kpis" id="kpis"></div>
+
+    <div class="grid two">
+      <article class="card" id="weather-card">
+        <div class="card-head">
+          <h2>현재 위치 외부 날씨</h2>
+          <div class="loc-tools">
+            <button id="btn-geo" class="ghost small" title="브라우저 위치 사용">⌖ 현재 위치</button>
+            <form id="loc-form" class="loc-form">
+              <input id="loc-input" type="search" placeholder="도시 검색 (예: 대전)" autocomplete="off">
+              <ul id="loc-results" class="dropdown" hidden></ul>
+            </form>
+          </div>
+        </div>
+        <div id="weather-body" class="weather-body"><p class="muted">위치 확인 중…</p></div>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>실내 · 외부 비교</h2></div>
+        <div id="compare-body" class="compare"></div>
+        <div id="advice" class="advice"></div>
+      </article>
+    </div>
+
+    <article class="card">
+      <div class="card-head">
+        <h2>최근 1시간</h2>
+        <span class="muted small" id="recent-note"></span>
+      </div>
+      <div class="grid charts" id="recent-charts"></div>
+    </article>
+  </section>
+
+  <!-- 과거 이력 -->
+  <section id="tab-history" class="tab">
+    <div class="filters">
+      <div class="seg" id="range-presets">
+        <button data-range="3600">1시간</button>
+        <button data-range="21600">6시간</button>
+        <button data-range="86400">24시간</button>
+        <button data-range="259200">3일</button>
+        <button data-range="604800">7일</button>
+        <button data-range="all" class="on">전체</button>
+      </div>
+      <div class="custom-range">
+        <input type="datetime-local" id="range-from" step="60">
+        <span>~</span>
+        <input type="datetime-local" id="range-to" step="60">
+        <button id="range-apply" class="small">적용</button>
+      </div>
+      <label class="switch"><input type="checkbox" id="show-outdoor" checked> 외부 기온 겹쳐보기</label>
+      <label class="switch"><input type="checkbox" id="show-anom" checked> 이상 구간 표시</label>
+    </div>
+    <p class="muted small" id="history-note"></p>
+    <div class="grid charts wide" id="history-charts"></div>
+
+    <article class="card">
+      <div class="card-head"><h2>일자별 요약</h2></div>
+      <div class="table-wrap"><table id="daily-table"></table></div>
+    </article>
+
+    <details class="card">
+      <summary>선택 구간 데이터 표로 보기</summary>
+      <div class="table-wrap tall"><table id="history-table"></table></div>
+    </details>
+  </section>
+
+  <!-- 추이 분석 -->
+  <section id="tab-trend" class="tab">
+    <div class="filters">
+      <span class="muted">분석 구간 (마지막 데이터 기준)</span>
+      <div class="seg" id="trend-window">
+        <button data-win="15">15분</button>
+        <button data-win="30">30분</button>
+        <button data-win="60" class="on">1시간</button>
+        <button data-win="180">3시간</button>
+        <button data-win="360">6시간</button>
+        <button data-win="1440">24시간</button>
+      </div>
+    </div>
+    <div class="grid trends" id="trend-cards"></div>
+
+    <div class="grid two">
+      <article class="card">
+        <div class="card-head">
+          <h2>시간대별 평균 패턴</h2>
+          <select id="profile-metric"></select>
+        </div>
+        <div class="chart-box"><canvas id="profile-chart"></canvas></div>
+        <p class="muted small">전체 기간의 1분 평균을 시각(0~23시)별로 평균한 값입니다. 반복되는 일중 패턴 대비 이탈 여부를 판단할 때 참고하세요.</p>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>실내 vs 외부 기온</h2></div>
+        <div id="io-stats" class="stat-row"></div>
+        <div class="chart-box" id="io-box"><canvas id="io-chart"></canvas></div>
+        <p class="muted small">같은 시각(1시간 단위)의 외부 기온과 실내 온도(DHT)를 비교합니다.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- 이상 이벤트 -->
+  <section id="tab-events" class="tab">
+    <div class="grid stat-tiles" id="health"></div>
+    <div class="filters">
+      <div class="seg" id="ev-kind">
+        <button data-kind="all" class="on">전체</button>
+        <button data-kind="env">환경 이상</button>
+        <button data-kind="sensor">센서/데이터 이상</button>
+      </div>
+      <select id="ev-metric"><option value="all">모든 지표</option></select>
+      <select id="ev-sev">
+        <option value="all">모든 심각도</option>
+        <option value="danger">위험만</option>
+        <option value="caution">주의 이상</option>
+      </select>
+    </div>
+    <article class="card">
+      <div class="table-wrap"><table id="event-table"></table></div>
+      <p class="muted small">행을 클릭하면 해당 구간의 과거 이력 차트로 이동합니다.</p>
+    </article>
+    <details class="card">
+      <summary>탐지 기준</summary>
+      <div id="criteria" class="criteria"></div>
+    </details>
+  </section>
+</main>
+
+<div id="tooltip-live" class="sr-only" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
